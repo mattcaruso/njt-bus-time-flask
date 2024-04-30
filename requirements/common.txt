@@ -1,4 +1,6 @@
 flask
+Flask-APScheduler==1.13.1
 gunicorn
 psycopg2-binary
 pytz
+requests
