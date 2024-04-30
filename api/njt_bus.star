@@ -15,13 +15,13 @@ LINE_BACKGROUND_COLOR = '#16277e'
 
 
 def main(config):
-    bus1_line = config.str('bus1_line')
-    bus1_headsign = config.str('bus1_headsign')
-    bus1_next_times = config.str('bus1_next_times')
+    bus1_line = config.str('bus1_line', '')
+    bus1_headsign = config.str('bus1_headsign', '')
+    bus1_next_times = config.str('bus1_next_times', '')
 
-    bus2_line = config.str('bus2_line')
-    bus2_headsign = config.str('bus2_headsign')
-    bus2_next_times = config.str('bus2_next_times')
+    bus2_line = config.str('bus2_line', '')
+    bus2_headsign = config.str('bus2_headsign', '')
+    bus2_next_times = config.str('bus2_next_times', '')
 
     return render.Root(
         child = render.Column(
