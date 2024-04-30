@@ -161,9 +161,11 @@ def push_to_tidbyt(device_ids: list) -> requests.Response:
         }
 
         response = requests.post(url=push_url, headers=headers, json=body)
+        print(f'Response from Tidbyt: {response.status_code}: {response.text}')
         return response
 
 
 @scheduler.task('interval', id='tidbyt-push', seconds=60*3, misfire_grace_time=900)
 def push():
+    print('Running push to Tidbyt')
     push_to_tidbyt(','.split(os.environ['TIDBYT_DEVICE_IDS']))
