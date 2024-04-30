@@ -169,3 +169,9 @@ def push_to_tidbyt(device_ids: list) -> requests.Response:
 def push():
     print('Running push to Tidbyt')
     push_to_tidbyt(','.split(os.environ['TIDBYT_DEVICE_IDS']))
+
+
+@scheduler.task('interval', id='heartbeat', seconds=5, misfire_grace_time=900)
+def push():
+    print('Heartbeat')
+
