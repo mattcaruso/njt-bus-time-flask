@@ -5,19 +5,16 @@ import requests
 
 from datetime import datetime
 from flask import Flask, Response, jsonify
-from flask_apscheduler import APScheduler
+from flask_crontab import Crontab
 from psycopg2 import extras
 
 from .errors import errors
 
 app = Flask(__name__)
 app.register_blueprint(errors)
+crontab = Crontab(app)
 
-scheduler = APScheduler()
-scheduler.init_app(app)
-scheduler.start()
-
-# TODO Add authentication (Is this necessary if it's only outgoing traffic?)
+# TODO Add authentication
 
 conn = psycopg2.connect(
     host=os.environ['PGHOST'],
@@ -165,7 +162,7 @@ def push_to_tidbyt(device_ids: list) -> requests.Response:
         return response
 
 
-@scheduler.task('interval', id='tidbyt-push', seconds=60*3, misfire_grace_time=900)
+@crontab.job(minute='*/3')
 def push():
     print('Running push to Tidbyt')
     push_to_tidbyt(','.split(os.environ['TIDBYT_DEVICE_IDS']))
