@@ -1,1 +1,1 @@
-* * * * * curl "njt-bus-time-flask.railway.internal:8080/cron"
+*/3 * * * * curl "njt-bus-time-flask.railway.internal:8080/push"
