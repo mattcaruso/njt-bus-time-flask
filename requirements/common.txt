@@ -1,5 +1,4 @@
 flask
-flask-crontab
 gunicorn
 psycopg2-binary
 pytz
