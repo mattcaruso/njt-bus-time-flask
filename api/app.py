@@ -162,3 +162,4 @@ def push_to_tidbyt(device_ids: list) -> requests.Response:
 def push():
     print('Running push to Tidbyt')
     push_to_tidbyt(','.split(os.environ['TIDBYT_DEVICE_IDS']))
+    return jsonify('Request to push sent to Tidbyt')
