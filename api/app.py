@@ -94,6 +94,7 @@ def next_departures(stop_code: str, route_name: str) -> str:
     """
     cur.execute(query)
     stops = cur.fetchall()
+    cur.close()
 
     response = []
 
@@ -171,6 +172,6 @@ def push():
 
     for i, device_id in enumerate(device_ids):
         api_key = api_keys[i]
-        push_to_tidbyt(device_id, api_key)
+        push_to_tidbyt(device_id, api_key)  # TODO Refactor so it only hits Axilla once and then pushes to both devices
 
     return jsonify('Request to push sent to Tidbyt')
