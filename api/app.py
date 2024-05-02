@@ -10,7 +10,7 @@ from psycopg2 import extras
 from .errors import errors
 
 app = Flask(__name__)
-app.register_blueprint(errors)
+# app.register_blueprint(errors)
 
 conn = psycopg2.connect(
     host=os.environ['PGHOST'],
@@ -129,37 +129,42 @@ def render_pixlet() -> str:
     return response.text
 
 
-def push_to_tidbyt(device_ids: list) -> requests.Response:
+def push_to_tidbyt(device_id: str, api_key: str) -> requests.Response:
     """
     Sends the image to Tidbyt
     https://tidbyt.dev/docs/api
     """
-    if not isinstance(device_ids, list):
-        raise TypeError('device_ids must be provided as a list')
-
     base_url = 'https://api.tidbyt.com'
     image_base64 = render_pixlet()
 
-    for device_id in device_ids:
-        push_url = f'{base_url}/v0/devices/{device_id}/push'
+    print(f'Pushing to device {device_id}')
+    push_url = f'{base_url}/v0/devices/{device_id}/push'
 
-        headers = {
-            'Authorization': f'Bearer {os.environ["TIDBYT_API_KEY"]}'
-        }
+    headers = {
+        'Authorization': f'Bearer {api_key}'
+    }
 
-        body = {
-            'image': image_base64,
-            'installationID': 'njtbustimes',
-            'background': True
-        }
+    body = {
+        'image': image_base64,
+        'installationID': 'njtbustimes',
+        'background': True
+    }
 
-        response = requests.post(url=push_url, headers=headers, json=body)
-        print(f'Response from Tidbyt: {response.status_code}: {response.text}')
-        return response
+    response = requests.post(url=push_url, headers=headers, json=body)
+    print(f'Response from Tidbyt: {response.status_code}: {response.text}')
+
+    return response
 
 
 @app.route('/push', methods=['GET'])
 def push():
-    print('Running push to Tidbyt')
-    push_to_tidbyt(','.split(os.environ['TIDBYT_DEVICE_IDS']))
+    print('Push to Tidbyt requested')
+
+    device_ids = os.environ['TIDBYT_DEVICE_IDS'].split(',')
+    api_keys = os.environ['TIDBYT_API_KEYS'].split(',')
+
+    for i, device_id in enumerate(device_ids):
+        api_key = api_keys[i]
+        push_to_tidbyt(device_id, api_key)
+
     return jsonify('Request to push sent to Tidbyt')
