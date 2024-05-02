@@ -113,16 +113,22 @@ def health():
 def render_pixlet() -> str:
     """Returns the rendered image for Tidbyt as a base64-encoded string"""
 
+    # TODO Refactor with Stop Code in config
+    bus1_next_times = next_departures('21055', '123')
+    bus2_next_times = next_departures('21073', '84')
+    print('BUS1 NEXT TIMES:', bus1_next_times)
+    print('BUS2 NEXT TIMES:', bus2_next_times)
+
     url = 'https://pixlet.palisadezoo.com'
     params = {
         'output': 'base64',  # Tidbyt API requires images to be base64
         'applet': 'https://raw.githubusercontent.com/mattcaruso/njt-bus-time-flask/main/api/njt_bus.star',
         'bus1_line': '123',
         'bus1_headsign': 'NEW YORK',
-        'bus1_next_times': next_departures('21055', '123'),  # TODO Refactor with Stop Code in config
+        'bus1_next_times': bus1_next_times,
         'bus2_line': '84',
         'bus2_headsign': 'JOURNAL SQ',
-        'bus2_next_times': next_departures('21073', '84')
+        'bus2_next_times': bus2_next_times
     }
 
     response = requests.get(url, params=params)
