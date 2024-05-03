@@ -12,13 +12,15 @@ from .errors import errors
 app = Flask(__name__)
 # app.register_blueprint(errors)
 
-conn = psycopg2.connect(
-    host=os.environ['PGHOST'],
-    port=os.environ['PGPORT'],
-    database=os.environ['PGDATABASE'],
-    user=os.environ['PGUSER'],
-    password=os.environ['PGPASSWORD']
-)
+
+def open_connection():
+    return psycopg2.connect(
+        host=os.environ['PGHOST'],
+        port=os.environ['PGPORT'],
+        database=os.environ['PGDATABASE'],
+        user=os.environ['PGUSER'],
+        password=os.environ['PGPASSWORD']
+    )
 
 
 @app.route("/stops/<stop_code>/<route_name>/next_departures", methods=["GET"])
@@ -28,7 +30,7 @@ def next_departures_api(stop_code, route_name):
 
 
 def next_departures(stop_code: str, route_name: str) -> str:
-    # Open a cursor to perform database operations
+    conn = open_connection()
     cur = conn.cursor(cursor_factory=extras.DictCursor)
 
     # Timezone can be hardcoded throughout the app because NJ Transit only exists in Eastern time.
@@ -95,6 +97,7 @@ def next_departures(stop_code: str, route_name: str) -> str:
     cur.execute(query)
     stops = cur.fetchall()
     cur.close()
+    conn.close()
 
     response = []
 
