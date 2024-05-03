@@ -117,8 +117,8 @@ def render_pixlet() -> str:
     # TODO Refactor with Stop Code in config
     bus1_next_times = next_departures('21055', '123')
     bus2_next_times = next_departures('21073', '84')
-    print('BUS1 NEXT TIMES:', bus1_next_times)
-    print('BUS2 NEXT TIMES:', bus2_next_times)
+    print('123 NEXT TIMES:', bus1_next_times)
+    print('84 NEXT TIMES:', bus2_next_times)
 
     url = 'https://pixlet.palisadezoo.com'
     params = {
@@ -133,18 +133,18 @@ def render_pixlet() -> str:
     }
 
     response = requests.get(url, params=params)
+    print('Response from Axilla Pixlet:', response.status_code)
     return response.text
 
 
-def push_to_tidbyt(device_id: str, api_key: str) -> requests.Response:
+def push_to_tidbyt(device_id: str, api_key: str, image_base64: str) -> requests.Response:
     """
     Sends the image to Tidbyt
     https://tidbyt.dev/docs/api
     """
-    base_url = 'https://api.tidbyt.com'
-    image_base64 = render_pixlet()
-
     print(f'Pushing to device {device_id}')
+
+    base_url = 'https://api.tidbyt.com'
     push_url = f'{base_url}/v0/devices/{device_id}/push'
 
     headers = {
@@ -167,11 +167,13 @@ def push_to_tidbyt(device_id: str, api_key: str) -> requests.Response:
 def push():
     print('Push to Tidbyt requested')
 
+    image_base64 = render_pixlet()
+
     device_ids = os.environ['TIDBYT_DEVICE_IDS'].split(',')
     api_keys = os.environ['TIDBYT_API_KEYS'].split(',')
 
     for i, device_id in enumerate(device_ids):
         api_key = api_keys[i]
-        push_to_tidbyt(device_id, api_key)  # TODO Refactor so it only hits Axilla once and then pushes to both devices
+        push_to_tidbyt(device_id, api_key, image_base64)
 
     return jsonify('Request to push sent to Tidbyt')
