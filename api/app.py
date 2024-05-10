@@ -2,15 +2,23 @@ import os
 import psycopg2
 import pytz
 import requests
-
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from flask import Flask, Response, jsonify
+from flask import Flask, Response, jsonify, request
 from psycopg2 import extras
 
-from .errors import errors
-
 app = Flask(__name__)
+executor = ThreadPoolExecutor(2)
+
+# As a workaround to the deprecation of @app.before_first_request, we'll use this flag to utilize the built-in
+# @app.before_request method which runs on every request. Only the first time, we'll flip this to True to bypass
+# the before_request function every other time.\
+# NOTE: This will run once per Gunicorn worker. The state of variables isn't shared across workers.
+initialized = False
+
 # app.register_blueprint(errors)
+# TODO Exit container if the /data volume doesn't exist
 
 
 def open_connection():
@@ -21,6 +29,45 @@ def open_connection():
         user=os.environ['PGUSER'],
         password=os.environ['PGPASSWORD']
     )
+
+
+def api_key_required(func):
+    def decorator(*args, **kwargs):
+        api_key = request.headers.get('x-api-key')
+        print("KEY FROM HEADERS:", api_key)
+        print("KEY FROM ENVIRON:", os.environ['API_KEY'])
+        if api_key == os.environ['API_KEY']:
+            return func(*args, **kwargs)
+        else:
+            return {"message": "Please provide a valid API key"}, 400
+    return decorator
+
+
+@app.before_request
+def before_request():
+    global initialized
+    query = f"""
+    DO $$ 
+        BEGIN 
+            IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'imports') THEN
+                CREATE TABLE imports (
+                    id SERIAL PRIMARY KEY,
+                    time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    url VARCHAR(255),
+                    success BOOLEAN DEFAULT TRUE
+                );
+            END IF;
+        END $$;
+    """
+    if not initialized:
+        conn = open_connection()
+        cur = conn.cursor()
+        cur.execute(query)
+        conn.commit()
+        cur.close()
+        conn.close()
+        initialized = True
+        print('Ensured existence of imports table.')
 
 
 @app.route("/stops/<stop_code>/<route_name>/next_departures", methods=["GET"])
@@ -180,3 +227,102 @@ def push():
         push_to_tidbyt(device_id, api_key, image_base64)
 
     return jsonify('Request to push sent to Tidbyt')
+
+
+@app.route('/load', methods=['GET'])
+def request_load_gtfs():
+    args = request.args
+    gtfs_url = args.get('gtfs')
+
+    if not gtfs_url:
+        # Will be NoneType if not found
+        return Response('Missing required parameter', status=400)
+
+    executor.submit(load_gtfs, gtfs_url)
+
+    return Response('Requested GTFS import', status=202)
+
+
+@app.route('/imports', methods=['GET'])
+@api_key_required
+def get_imports():
+
+    query = f"""
+        SELECT * FROM imports ORDER BY time DESC LIMIT 5
+    """
+    conn = open_connection()
+    cur = conn.cursor(cursor_factory=extras.RealDictCursor)
+    cur.execute(query)
+    imports = cur.fetchall()
+
+    # Add a derived key which converts the time to eastern time
+    [i.update({'time_et': convert_to_nj_time(i['time'])}) for i in imports]
+
+    cur.close()
+    conn.close()
+
+    return jsonify(imports)
+
+
+def convert_to_nj_time(utc_time: datetime):
+    # Make the UTC time aware of its timezone
+    utc_time = pytz.timezone('UTC').localize(utc_time)
+
+    # Convert to Eastern time; will be aware of daylight savings
+    new_york_time = utc_time.astimezone(pytz.timezone('America/New_York'))
+    formatted_time = new_york_time.strftime('%Y-%m-%d %I:%M%p')
+
+    return formatted_time
+
+
+def load_gtfs(gtfs_url):
+    print('*** BEGIN GTFS LOAD')
+    gtfsdb_to_sqlite(gtfs_url)
+    ingest_sqlite_to_postgres(
+        f'postgresql://{os.environ["PGUSER"]}:'
+        f'{os.environ["PGPASSWORD"]}@{os.environ["PGHOST"]}:'
+        f'{os.environ["PGPORT"]}/{os.environ["PGDATABSE"]}'
+    )
+    record_import(gtfs_url)
+    print('*** GTFS LOAD COMPLETED')
+
+
+def gtfsdb_to_sqlite(gtfs_url):
+    """Uses the gtfsdb source code to run a CLI to generate a sqlite db from a GTFS file."""
+    subprocess.call([
+        '/app/bin/gtfsdb/bin/gtfsdb-load',
+        '--tables',
+        'stops',
+        'agency',
+        'calendar_dates',
+        'route_directions',
+        'route_filters',
+        'route_type',
+        'routes',
+        'stop_times',
+        'trips',
+        'universal_calendar',
+        '--ignore_postprocess',
+        '--database_url',
+        'sqlite:////data/gtfs.sqlite3',
+        gtfs_url
+    ])
+
+
+def ingest_sqlite_to_postgres(postgres_url):
+    subprocess.call([
+        'pgloader',
+        'sqlite:////data/gtfs.sqlite3',
+        postgres_url
+    ])
+
+
+def record_import(url: str):
+
+    query = f"INSERT INTO imports (url) VALUES ('{url}');"
+    conn = open_connection()
+    cur = conn.cursor()
+    cur.execute(query)
+    conn.commit()
+    cur.close()
+    conn.close()
