@@ -23,7 +23,8 @@ def test_next_departure(client):
 
 
 def test_next_departures():
-    next_departures('21055', '123')
+    departures = next_departures('21073', '84')
+    pass
 
 
 def test_render_via_axilla():
