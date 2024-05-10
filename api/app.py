@@ -236,7 +236,7 @@ def request_load_gtfs():
 
     if not gtfs_url:
         # Will be NoneType if not found
-        return Response('Missing required parameter', status=400)
+        return Response('Missing required parameter `gtfs`', status=400)
 
     executor.submit(load_gtfs, gtfs_url)
 
@@ -295,10 +295,17 @@ def gtfsdb_to_sqlite(gtfs_url):
         'stops',
         'agency',
         'calendar_dates',
+        'calendar',
+        'fare_attributes',
+        'fare_rules',
+        'feed_info',
+        'frequencies',
         'route_directions',
         'route_filters',
+        'route_stops',
         'route_type',
         'routes',
+        'stop_features',
         'stop_times',
         'trips',
         'universal_calendar',
