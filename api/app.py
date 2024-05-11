@@ -34,8 +34,6 @@ def open_connection():
 def api_key_required(func):
     def decorator(*args, **kwargs):
         api_key = request.headers.get('x-api-key')
-        print("KEY FROM HEADERS:", api_key)
-        print("KEY FROM ENVIRON:", os.environ['API_KEY'])
         if api_key == os.environ['API_KEY']:
             return func(*args, **kwargs)
         else:
