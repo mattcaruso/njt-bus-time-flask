@@ -278,11 +278,7 @@ def convert_to_nj_time(utc_time: datetime):
 def load_gtfs(gtfs_url):
     print('*** BEGIN GTFS LOAD')
     gtfsdb_to_sqlite(gtfs_url)
-    ingest_sqlite_to_postgres(
-        f'postgresql://{os.environ["PGUSER"]}:'
-        f'{os.environ["PGPASSWORD"]}@{os.environ["PGHOST"]}:'
-        f'{os.environ["PGPORT"]}/{os.environ["PGDATABSE"]}'
-    )
+    ingest_sqlite_to_postgres(f'postgresql://{os.environ["PGUSER"]}:{os.environ["PGPASSWORD"]}@{os.environ["PGHOST"]}:{os.environ["PGPORT"]}/{os.environ["PGDATABASE"]}')
     record_import(gtfs_url)
     print('*** GTFS LOAD COMPLETED')
 
@@ -296,13 +292,7 @@ def gtfsdb_to_sqlite(gtfs_url):
         'agency',
         'calendar_dates',
         'calendar',
-        'fare_attributes',
-        'fare_rules',
-        'feed_info',
-        'frequencies',
-        'route_directions',
         'route_filters',
-        'route_stops',
         'route_type',
         'routes',
         'stop_features',
@@ -317,6 +307,7 @@ def gtfsdb_to_sqlite(gtfs_url):
 
 
 def ingest_sqlite_to_postgres(postgres_url):
+    print('*** BEGIN PGLOADER TO SERVER')
     subprocess.call([
         'pgloader',
         'sqlite:////data/gtfs.sqlite3',
