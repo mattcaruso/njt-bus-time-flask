@@ -48,7 +48,7 @@ def truncate_tables(engine):
             # Disable foreign key checks temporarily
             conn.execute(text("SET session_replication_role = 'replica';"))
             try:
-                for table in ["agency", "stops", "calendar_dates", "routes", "trips"]:
+                for table in ["agency", "stops", "calendar_dates", "routes", "trips", "stop_times"]:
                     # Truncate each table with RESTART IDENTITY to reset sequences
                     query = text(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;")
                     conn.execute(query)
