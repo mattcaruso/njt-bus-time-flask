@@ -1,3 +1,4 @@
+import gc
 import os
 import psycopg2
 import pytz
@@ -283,6 +284,7 @@ def load_gtfs(gtfs_url):
     gtfsdb_to_sqlite(gtfs_url)
     ingest_sqlite_to_postgres(f'postgresql://{os.environ["PGUSER"]}:{os.environ["PGPASSWORD"]}@{os.environ["PGHOST"]}:{os.environ["PGPORT"]}/{os.environ["PGDATABASE"]}')
     record_import(gtfs_url)
+    gc.collect()
     print('*** GTFS LOAD COMPLETED')
 
 
