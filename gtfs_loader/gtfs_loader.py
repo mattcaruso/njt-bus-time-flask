@@ -79,7 +79,7 @@ def load_gtfs_file_to_db(gtfs_path, table_name, model, session, row_filter=None)
     session.commit()
 
 
-def record_import(engine, url):
+def record_import(engine, url: str):
     with engine.connect() as conn:
         with conn.begin():
             conn.execute(text(f"INSERT INTO imports (url) VALUES ('{url}');"))
@@ -115,7 +115,7 @@ def main():
         if gtfs_path:
             shutil.rmtree(gtfs_path)
 
-    record_import(url=GTFS_URL)
+    record_import(engine, GTFS_URL)
     session.close()
     print("\n** Load complete! **\n** Exiting container. **")
 
