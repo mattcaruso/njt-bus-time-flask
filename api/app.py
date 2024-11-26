@@ -1,16 +1,12 @@
-import gc
 import os
 import psycopg2
 import pytz
 import requests
-import subprocess
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from flask import Flask, Response, jsonify, request
 from psycopg2 import extras
 
 app = Flask(__name__)
-executor = ThreadPoolExecutor(2)
 
 # As a workaround to the deprecation of @app.before_first_request, we'll use this flag to utilize the built-in
 # @app.before_request method which runs on every request. Only the first time, we'll flip this to True to bypass
@@ -18,7 +14,6 @@ executor = ThreadPoolExecutor(2)
 # NOTE: This will run once per Gunicorn worker. The state of variables isn't shared across workers.
 initialized = False
 
-# app.register_blueprint(errors)
 # TODO Exit container if the /data volume doesn't exist
 
 
@@ -233,20 +228,6 @@ def push():
     return jsonify('Request to push sent to Tidbyt')
 
 
-@app.route('/load', methods=['GET'])
-def request_load_gtfs():
-    args = request.args
-    gtfs_url = args.get('gtfs')
-
-    if not gtfs_url:
-        # Will be NoneType if not found
-        return Response('Missing required parameter `gtfs`', status=400)
-
-    executor.submit(load_gtfs, gtfs_url)
-
-    return Response('Requested GTFS import', status=202)
-
-
 @app.route('/imports', methods=['GET'])
 @api_key_required
 def get_imports():
@@ -277,55 +258,3 @@ def convert_to_nj_time(utc_time: datetime):
     formatted_time = new_york_time.strftime('%Y-%m-%d %I:%M%p')
 
     return formatted_time
-
-
-def load_gtfs(gtfs_url):
-    print('*** BEGIN GTFS LOAD')
-    gtfsdb_to_sqlite(gtfs_url)
-    ingest_sqlite_to_postgres(f'postgresql://{os.environ["PGUSER"]}:{os.environ["PGPASSWORD"]}@{os.environ["PGHOST"]}:{os.environ["PGPORT"]}/{os.environ["PGDATABASE"]}')
-    record_import(gtfs_url)
-    gc.collect()
-    print('*** GTFS LOAD COMPLETED')
-
-
-def gtfsdb_to_sqlite(gtfs_url):
-    """Uses the gtfsdb source code to run a CLI to generate a sqlite db from a GTFS file."""
-    subprocess.call([
-        '/app/bin/gtfsdb/bin/gtfsdb-load',
-        '--tables',
-        'stops',
-        'agency',
-        'calendar_dates',
-        'calendar',
-        'route_filters',
-        'route_type',
-        'routes',
-        'stop_features',
-        'stop_times',
-        'trips',
-        'universal_calendar',
-        '--ignore_postprocess',
-        '--database_url',
-        'sqlite:////data/gtfs.sqlite3',
-        gtfs_url
-    ])
-
-
-def ingest_sqlite_to_postgres(postgres_url):
-    print('*** BEGIN PGLOADER TO SERVER')
-    subprocess.call([
-        'pgloader',
-        'sqlite:////data/gtfs.sqlite3',
-        postgres_url
-    ])
-
-
-def record_import(url: str):
-
-    query = f"INSERT INTO imports (url) VALUES ('{url}');"
-    conn = open_connection()
-    cur = conn.cursor()
-    cur.execute(query)
-    conn.commit()
-    cur.close()
-    conn.close()
