@@ -9,12 +9,9 @@ from sqlalchemy import create_engine, text
 from models import Base, Agency, Stops, CalendarDates, Routes, StopTimes, Trips
 from sqlalchemy.orm import sessionmaker
 
-# TODO Specify requirements versions
-# TODO Remove env vars from Dockerfile
-
 # Environment variables
-POSTGRES_URL = "postgresql://postgres@host.docker.internal:5432/gtfs_local"
-GTFS_URL = "https://www.njtransit.com/bus_data.zip"
+POSTGRES_URL = os.environ.get('DATABASE_URL')
+GTFS_URL = os.environ.get('GTFS_URL')
 included_trips = []
 
 if not POSTGRES_URL or not GTFS_URL:
